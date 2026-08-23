@@ -5,7 +5,7 @@ const resolve = UDPClient({
     port: 5333
 });
 
-resolve("ads.example.com")
+resolve("google.com")
     .then(response => {
         console.log("Response received!");
         console.log(response);

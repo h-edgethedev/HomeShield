@@ -1,5 +1,4 @@
 const fs = require("fs")
-const blocklistData = fs.readFileSync("blocklist.txt")
 const { Packet } = require("dns2")
 const dns2 = require("dns2")
 const { UDPClient } = dns2
@@ -9,6 +8,10 @@ const resolve = UDPClient({
     port: 53
 }) // Cloudflare upstream server requirements
 
+const blocklistData = fs.readFileSync("blocklist.txt", "utf8") //Extracting list of blocked domains from the blocklist.txt file
+
+const blocklist = blocklistData.split("\n").map(domain =>domain.trim().toLowerCase()).filter(domain => domain !== "")
+
 const server = dns2.createServer({
     udp: true,
     handle: async (request, send, rinfo) => {
@@ -16,7 +19,7 @@ const server = dns2.createServer({
         const domain = question.name.toLowerCase()
     //Checking our Blocklist for existing domains
         if(blocklist.includes(domain)){
-            console.log(`This domain: ${domain} is blocked`)
+            console.log(`BLOCKED: ${domain}`)
             const response = Packet.createResponseFromRequest(request)
             response.header.rcode = Packet.RCODE.NXDOMAIN
             send(response)

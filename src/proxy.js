@@ -1,12 +1,7 @@
+const fs = require("fs")
+const blocklistData = fs.readFileSync("blocklist.txt")
 const { Packet } = require("dns2")
 const dns2 = require("dns2")
-
-const blocklist= [
-    "ads.example.com",
-    "tracker.example.com",
-    "pornhub.com"
-]
-
 const { UDPClient } = dns2
 
 const resolve = UDPClient({
@@ -18,6 +13,15 @@ const server = dns2.createServer({
     udp: true,
     handle: async (request, send, rinfo) => {
         const question = request.questions[0]
+        const domain = question.name.toLowerCase()
+    //Checking our Blocklist for existing domains
+        if(blocklist.includes(domain)){
+            console.log(`This domain: ${domain} is blocked`)
+            const response = Packet.createResponseFromRequest(request)
+            response.header.rcode = Packet.RCODE.NXDOMAIN
+            send(response)
+            return
+        }
         console.log(`DNS REQUEST`)
         console.log(`Domain: ${question.name}`)
         console.log(`Type: ${question.type}`)
@@ -34,6 +38,7 @@ const server = dns2.createServer({
             console.log("Received response from UPstream")
             send(response)//Sending the response back
             console.log("Response sent to Client")
+            console.log("_________________________________________________________\n")
         } 
         catch (error) {
             console.error("DNS lookup failed: ", error)

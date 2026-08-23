@@ -1,4 +1,11 @@
+const { Packet } = require("dns2")
 const dns2 = require("dns2")
+
+const blocklist= [
+    "ads.example.com",
+    "tracker.example.com",
+    "pornhub.com"
+]
 
 const { UDPClient } = dns2
 
@@ -15,12 +22,20 @@ const server = dns2.createServer({
         console.log(`Domain: ${question.name}`)
         console.log(`Type: ${question.type}`)
         console.log(`Client: ${rinfo.address}`)// extracting the questions
+
+        const typeName = Packet.TYPE_NAME[question.type] //converting the type number to a type name
+        console.log(`Type name: ${typeName}`) 
+
         try {
-            const response = await resolve(question.name, question.type) //Asking cloudflare for the response
+            const response = await resolve(question.name, typeName) //Asking cloudflare for the response
+            console.log(`Client request ID: ${request.header.id}`)
+            console.log(`Upstream response ID: ${response.header.id}`)
+            response.header.id = request.header.id // converting the response id to the client's request id before sending the request to the id
             console.log("Received response from UPstream")
             send(response)//Sending the response back
             console.log("Response sent to Client")
-        } catch (error) {
+        } 
+        catch (error) {
             console.error("DNS lookup failed: ", error)
         }
     }

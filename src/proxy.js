@@ -10,7 +10,13 @@ const resolve = UDPClient({
 
 const blocklistData = fs.readFileSync("blocklist.txt", "utf8") //Extracting list of blocked domains from the blocklist.txt file
 
-const blocklist = blocklistData.split("\n").map(domain =>domain.trim().toLowerCase()).filter(domain => domain !== "")
+const blocklist = blocklistData.split("\n").map(domain =>domain.trim().toLowerCase()).filter(domain => domain !== "") //Basically just converting the domains in the blocklist to lowercase and filtering empty lines
+
+function isBlocked(domain){
+    return blocklist.some(blockedDomain =>{
+        return domain === blockedDomain || domain.endsWith("."+blockedDomain)
+    })
+} //This function is the new one that checks if the domain exists in the blocklist txt file
 
 const server = dns2.createServer({
     udp: true,
@@ -18,7 +24,7 @@ const server = dns2.createServer({
         const question = request.questions[0]
         const domain = question.name.toLowerCase()
     //Checking our Blocklist for existing domains
-        if(blocklist.includes(domain)){
+        if(isBlocked(domain)){
             console.log(`BLOCKED: ${domain}`)
             const response = Packet.createResponseFromRequest(request)
             response.header.rcode = Packet.RCODE.NXDOMAIN
@@ -52,7 +58,7 @@ const server = dns2.createServer({
 server.on("listening", () => {
     console.log("🛡️ HomeShield DNS Proxy");
     console.log("Listening on 127.0.0.1:5333");
-    console.log("Upstream DNS: 1.1.1.1");//Server Listens on dns requests fron this address
+    console.log("Upstream DNS: 1.1.1.1\n");//Server Listens on dns requests fron this address
 })
 
 server.on("requestError", error => {
@@ -65,3 +71,4 @@ server.listen({
         address: "127.0.0.1"
     }
 })//It listens for dns requests from port 5333 and the domain address
+

@@ -31,6 +31,6 @@ server.on("listening", () => {
 server.listen({
     udp: {
         port: 5333,
-        address: "127.0.0.1"
+        address: "0.0.0.0"
     }
 });

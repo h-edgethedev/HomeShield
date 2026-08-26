@@ -9,7 +9,7 @@ const resolve = UDPClient({
     port: PORT
 });
 
-resolve("vercel.app")
+resolve("google.com")
     .then(response => {
         console.log("Response received!");
         console.log(response);
@@ -17,3 +17,7 @@ resolve("vercel.app")
     .catch(error => {
         console.error("DNS client error:", error);
     });
+
+const cache = new Map()
+cache.set("google.com", "216.58.223.238")
+console.log(cache.get("google.com"))

@@ -2,11 +2,16 @@ const fs = require("fs")
 const path = require("path")
 const { Packet } = require("dns2")
 const dns2 = require("dns2")
+const { json } = require("stream/consumers")
 const { UDPClient } = dns2
 require("dotenv").config()
 
+//Loading ENV files
 const UPSTREAM_DNS = process.env.UPSTREAM_DNS //|| "10.182.140.164"
 const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT) || 53
+
+// Creating the cache:
+const cache = new Map()
 
 const resolve = UDPClient({
     dns: UPSTREAM_DNS,
@@ -44,14 +49,28 @@ const server = dns2.createServer({
         const typeName = Packet.TYPE_NAME[question.type] //converting the type number to a type name
         console.log(`Type name: ${typeName}`)
 
+        //Chacking cache if response exists:
+
         try {
+            if (cache.has(domain)) {
+                console.log(`Cache Hit: ${domain}`)
+                const cachedResponse = cache.get(domain)
+                cachedResponse.header.id = request.header.id
+                send(cachedResponse)
+                return
+            }
+            console.log(`Cache Miss: ${domain}`)
             const response = await resolve(question.name, typeName) //Asking cloudflare for the response
             console.log(`Client request ID: ${request.header.id}`)
             console.log(`Upstream response ID: ${response.header.id}`)
+            //Setting Cache to the requested domain
+            cache.set(domain, response)
+            console.log(`Cached Domain: ${domain}`)
             response.header.id = request.header.id // converting the response id to the client's request id before sending the request to the id
             console.log("Received response from UPstream")
             send(response)//Sending the response back
             console.log("Response sent to Client")
+            // console.log(`Answers: ${JSON.stringify(response.answers)}`)
             console.log("_________________________________________________________\n")
         }
         catch (error) {
@@ -90,4 +109,3 @@ try {
 process.on("uncaughtException", error => {
     console.error("Uncaught exception:", error);
 });
-

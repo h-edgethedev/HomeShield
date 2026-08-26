@@ -1,20 +1,25 @@
 const fs = require("fs")
+const path = require("path")
 const { Packet } = require("dns2")
 const dns2 = require("dns2")
 const { UDPClient } = dns2
+require("dotenv").config()
+
+const UPSTREAM_DNS = process.env.UPSTREAM_DNS //|| "10.182.140.164"
+const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT) || 53
 
 const resolve = UDPClient({
-    dns: "1.1.1.1",
-    port: 53
+    dns: UPSTREAM_DNS,
+    port: UPSTREAM_PORT
 }) // Cloudflare upstream server requirements
 
 const blocklistData = fs.readFileSync("blocklist.txt", "utf8") //Extracting list of blocked domains from the blocklist.txt file
 
-const blocklist = blocklistData.split("\n").map(domain =>domain.trim().toLowerCase()).filter(domain => domain !== "") //Basically just converting the domains in the blocklist to lowercase and filtering empty lines
+const blocklist = blocklistData.split("\n").map(domain => domain.trim().toLowerCase()).filter(domain => domain !== "") //Basically just converting the domains in the blocklist to lowercase and filtering empty lines
 
-function isBlocked(domain){
-    return blocklist.some(blockedDomain =>{
-        return domain === blockedDomain || domain.endsWith("."+blockedDomain)
+function isBlocked(domain) {
+    return blocklist.some(blockedDomain => {
+        return domain === blockedDomain || domain.endsWith("." + blockedDomain)
     })
 } //This function is the new one that checks if the domain exists in the blocklist txt file
 
@@ -23,8 +28,8 @@ const server = dns2.createServer({
     handle: async (request, send, rinfo) => {
         const question = request.questions[0]
         const domain = question.name.toLowerCase()
-    //Checking our Blocklist for existing domains
-        if(isBlocked(domain)){
+        //Checking our Blocklist for existing domains
+        if (isBlocked(domain)) {
             console.log(`BLOCKED: ${domain}`)
             const response = Packet.createResponseFromRequest(request)
             response.header.rcode = Packet.RCODE.NXDOMAIN
@@ -37,7 +42,7 @@ const server = dns2.createServer({
         console.log(`Client: ${rinfo.address}`)// extracting the questions
 
         const typeName = Packet.TYPE_NAME[question.type] //converting the type number to a type name
-        console.log(`Type name: ${typeName}`) 
+        console.log(`Type name: ${typeName}`)
 
         try {
             const response = await resolve(question.name, typeName) //Asking cloudflare for the response
@@ -48,7 +53,7 @@ const server = dns2.createServer({
             send(response)//Sending the response back
             console.log("Response sent to Client")
             console.log("_________________________________________________________\n")
-        } 
+        }
         catch (error) {
             console.error("DNS lookup failed: ", error)
         }
@@ -57,18 +62,32 @@ const server = dns2.createServer({
 
 server.on("listening", () => {
     console.log("🛡️ HomeShield DNS Proxy");
-    console.log("Listening on 127.0.0.1:5333");
-    console.log("Upstream DNS: 1.1.1.1\n");//Server Listens on dns requests fron this address
+    console.log("Listening on 0.0.0.0:5333 (all interfaces)");
+    console.log(`Upstream DNS: ${UPSTREAM_DNS}\n`);//Server Listens on dns requests fron this address
 })
 
 server.on("requestError", error => {
     console.error("Server error:", error);
 });
 
-server.listen({
-    udp:{
-        port: 5333,
-        address: "127.0.0.1"
-    }
-})//It listens for dns requests from port 5333 and the domain address
+server.on("error", error => {
+    console.error("Server error event:", error);
+});
+
+try {
+    server.listen({
+        udp: {
+            port: 5333,
+            address: "0.0.0.0"
+        }
+    })
+    console.log("Server listen() called successfully");
+} catch (error) {
+    console.error("Failed to start server:", error);
+}
+
+// Keep process alive
+process.on("uncaughtException", error => {
+    console.error("Uncaught exception:", error);
+});
 

@@ -12,7 +12,7 @@ const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT) || 53
 
 // Creating the cache:
 const cache = new Map()
-
+//Keep terminal running
 const resolve = UDPClient({
     dns: UPSTREAM_DNS,
     port: UPSTREAM_PORT

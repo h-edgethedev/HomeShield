@@ -5,11 +5,11 @@ require("dotenv").config()
 const PORT = Number(process.env.PORT)
 
 const resolve = UDPClient({
-    dns: "192.168.8.197",
+    dns: "192.168.8.198",
     port: PORT
 });
 
-resolve("google.com")
+resolve("ads.example.com")
     .then(response => {
         console.log("Response received!");
         console.log(response);

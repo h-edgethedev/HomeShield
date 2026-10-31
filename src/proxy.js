@@ -9,10 +9,11 @@ require("dotenv").config()
 //Loading ENV files
 const UPSTREAM_DNS = process.env.UPSTREAM_DNS //|| "10.182.140.164"
 const UPSTREAM_PORT = Number(process.env.UPSTREAM_PORT) || 53
-
+const SERVER_PORT = Number(process.env.PORT) || 53
 // Creating the cache:
 const cache = new Map()
-//Keep terminal running
+
+
 const resolve = UDPClient({
     dns: UPSTREAM_DNS,
     port: UPSTREAM_PORT
@@ -36,6 +37,7 @@ const server = dns2.createServer({
         //Checking our Blocklist for existing domains
         if (isBlocked(domain)) {
             console.log(`BLOCKED: ${domain}`)
+            console.log("_______________________________________________________")
             const response = Packet.createResponseFromRequest(request)
             response.header.rcode = Packet.RCODE.NXDOMAIN
             send(response)
@@ -49,7 +51,7 @@ const server = dns2.createServer({
         const typeName = Packet.TYPE_NAME[question.type] //converting the type number to a type name
         console.log(`Type name: ${typeName}`)
 
-        //Chacking cache if response exists:
+        //Checking cache if response exists:
 
         try {
             if (cache.has(domain)) {
@@ -81,7 +83,7 @@ const server = dns2.createServer({
 
 server.on("listening", () => {
     console.log("🛡️ HomeShield DNS Proxy");
-    console.log("Listening on 0.0.0.0:5333 (all interfaces)");
+    console.log("Listening on 0.0.0.0:53 (all interfaces)");
     console.log(`Upstream DNS: ${UPSTREAM_DNS}\n`);//Server Listens on dns requests fron this address
 })
 
@@ -96,7 +98,7 @@ server.on("error", error => {
 try {
     server.listen({
         udp: {
-            port: 5333,
+            port: SERVER_PORT,
             address: "0.0.0.0"
         }
     })

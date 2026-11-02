@@ -5,6 +5,15 @@ const dns2 = require("dns2")
 const { json } = require("stream/consumers")
 const { UDPClient } = dns2
 require("dotenv").config()
+const express = ("express")
+
+let stats = {
+    totalQueries: 0,
+    blockedQueries: 0,
+    recentLogs: []
+}
+
+
 
 //Loading ENV files
 const UPSTREAM_DNS = process.env.UPSTREAM_DNS //|| "10.182.140.164"

@@ -128,7 +128,8 @@ UPSTREAM_PORT=53
 
 ```bash
 # Start HomeShield DNS Proxy
-npm start
+node src/proxy.js  (For Windows)
+sudo node src/proxy.js (For MacOS)
 ```
 
 You should see:

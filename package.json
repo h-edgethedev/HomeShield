@@ -1,12 +1,22 @@
 {
   "name": "homeshield",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Lightweight self-hosted DNS sinkhole and ad-blocking proxy built with Node.js",
+  "main": "src/proxy.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/proxy.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:client": "node src/dns-client-test.js",
+    "test:upstream": "node src/upstream-test.js"
   },
-  "keywords": [],
+  "keywords": [
+    "dns",
+    "dns-proxy",
+    "sinkhole",
+    "adblocker",
+    "privacy",
+    "homelab"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

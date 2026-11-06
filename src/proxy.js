@@ -5,14 +5,28 @@ const dns2 = require("dns2")
 const { json } = require("stream/consumers")
 const { UDPClient } = dns2
 require("dotenv").config()
-const express = ("express")
+const express = require("express")
+const devices = require("./config/devices")
+const logQuery = require("./services/tracker")
 
 let stats = {
     totalQueries: 0,
     blockedQueries: 0,
     recentLogs: []
-}
+};
 
+// Start of Dashboard Web Server Logic
+const app = express();
+app.use(express.static(path.join(__dirname, '../public'))); // Serves your index.html
+
+app.get('/api/stats', (req, res) => {
+    res.json(stats);
+});
+
+app.listen(3000, () => {
+    console.log('📊 Dashboard running on http://localhost:3000');
+});
+// End of Dashboard Logic
 
 
 //Loading ENV files
@@ -44,7 +58,16 @@ const server = dns2.createServer({
         const question = request.questions[0]
         const domain = question.name.toLowerCase()
         //Checking our Blocklist for existing domains
+        stats.totalQueries++;
         if (isBlocked(domain)) {
+            stats.blockedQueries++;
+            stats.recentLogs.unshift({
+                time: new Date().toLocaleTimeString(),
+                action: "Blocked",
+                domain,
+                device: devices[rinfo.address] || rinfo.address
+            })
+            if (stats.recentLogs.length > 50) stats.recentLogs.pop(); // Keep table from getting too long
             console.log(`BLOCKED: ${domain}`)
             console.log("_______________________________________________________")
             const response = Packet.createResponseFromRequest(request)
@@ -56,7 +79,12 @@ const server = dns2.createServer({
         console.log(`Domain: ${question.name}`)
         console.log(`Type: ${question.type}`)
         console.log(`Client: ${rinfo.address}`)// extracting the questions
-
+        stats.recentLogs.unshift({
+            time: new Date().toLocaleTimeString(),
+            action: "Allowed",
+            domain,
+            device: devices[rinfo.address] || rinfo.address
+        });
         const typeName = Packet.TYPE_NAME[question.type] //converting the type number to a type name
         console.log(`Type name: ${typeName}`)
 

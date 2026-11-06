@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeShield | DNS Dashboard</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --border: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #3b82f6;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 2rem; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    h1 { font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .status-badge { background: rgba(16, 185, 129, 0.15); color: var(--success); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); padding: 1.5rem; border-radius: 12px; }
+    .card-title { font-size: 0.875rem; color: var(--muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-number { font-size: 2.25rem; font-weight: 800; color: var(--accent); }
+    .stat-number.blocked { color: var(--danger); }
+
+    .table-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .table-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { background: #151e30; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 1rem 1.5rem; }
+    td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+    tr:last-child td { border-bottom: none; }
+
+    .tag { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+    .tag.Blocked { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .tag.Allowed { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .device-pill { background: #1f2937; color: var(--muted); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🛡️ HomeShield Monitor</h1>
+    <span class="status-badge">● Engine Online</span>
+  </header>
+
+  <section class="grid">
+    <div class="card">
+      <div class="card-title">Total Queries</div>
+      <div id="stat-total" class="stat-number">0</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Blocked Ads</div>
+      <div id="stat-blocked" class="stat-number blocked">0</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Block Rate</div>
+      <div id="stat-rate" class="stat-number">0%</div>
+    </div>
+  </section>
+
+  <section class="table-container">
+    <div class="table-header">Live Query Stream</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Status</th>
+          <th>Requested Domain</th>
+          <th>Client Device</th>
+        </tr>
+      </thead>
+      <tbody id="log-table">
+        <tr><td colspan="4" style="text-align: center; color: var(--muted);">Waiting for DNS traffic...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    async function updateDashboard() {
+      try {
+        const response = await fetch('/api/stats');
+        const data = await response.json();
+
+        // Update counters
+        document.getElementById('stat-total').innerText = data.totalQueries.toLocaleString();
+        document.getElementById('stat-blocked').innerText = data.blockedQueries.toLocaleString();
+        
+        const rate = data.totalQueries > 0 
+          ? ((data.blockedQueries / data.totalQueries) * 100).toFixed(1) 
+          : 0;
+        document.getElementById('stat-rate').innerText = `${rate}%`;
+
+        // Render log stream
+        if (data.recentLogs.length > 0) {
+          document.getElementById('log-table').innerHTML = data.recentLogs.map(log => `
+            <tr>
+              <td style="color: var(--muted);">${log.time}</td>
+              <td><span class="tag ${log.action}">${log.action}</span></td>
+              <td style="font-family: monospace;">${log.domain}</td>
+              <td><span class="device-pill">${log.device}</span></td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Failed fetching telemetry:', err);
+      }
+    }
+
+    // Refresh telemetry every 1 second
+    setInterval(updateDashboard, 1000);
+    updateDashboard();
+  </script>
+
+</body>
+</html>

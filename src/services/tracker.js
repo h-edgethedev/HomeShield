@@ -27,9 +27,10 @@ function logQuery(action, domain, device) {
             stats.recentLogs.pop()
         }
     }
-    function getStats() {
-        return stats
-    }
+
 }
 
+function getStats() {
+    return stats
+}
 module.exports = { logQuery, getStats }

@@ -1,292 +1,370 @@
-# 🛡️ HomeShield
+# HomeShield
 
 <div align="center">
-
-[![Node.js](https://img.shields.io/badge/Node.js-v18+-green.svg?logo=node.js)](https://nodejs.org/)
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
-[![DNS Protocol](https://img.shields.io/badge/DNS-UDP%20Port%2053-orange.svg)]()
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
-
-**A lightweight, self-hosted DNS sinkhole & privacy proxy built with Node.js.**  
-Block network-wide advertisements, tracking domains, and malware before they ever reach your devices.
-
-[Features](#-features) • [How It Works](#-how-it-works) • [Quick Start](#-quick-start) • [Device Setup](#-client--device-setup) • [Configuration](#-configuration) • [Project Structure](#-project-structure) • [Roadmap](#-roadmap)
-
+  <img src="public/homeshield_logo.png" alt="HomeShield logo" width="180" />
 </div>
 
----
+HomeShield is a lightweight, self-hosted DNS sinkhole and privacy proxy built with Node.js. It sits between your devices and upstream DNS providers and blocks ads, trackers, malware, and other unwanted domains before they reach your network.
 
-## 📖 Overview
+- Built for home networks and small labs
+- Protects all devices connected to the same router or network
+- Runs locally with no browser extension required
+- Uses a blocklist and DNS filtering to stop tracking at the source
 
-**HomeShield** acts as your local network's first line of defense. By operating as an intermediary DNS proxy between your devices and upstream resolvers (like Google DNS or Cloudflare), HomeShield intercepts DNS queries in real time:
+## Overview
 
-- **Advertisements & Trackers**: Instantly sinkholed with an `NXDOMAIN` response using a curated blocklist of 190,000+ domains.
-- **Legitimate Requests**: Resolved through high-speed upstream DNS servers and cached in memory for near-instant subsequent lookups.
-- **Zero Client Software Required**: Protects every device on your Wi-Fi (laptops, smartphones, smart TVs, IoT devices) without installing browser extensions or third-party apps.
+HomeShield acts as a local DNS filtering layer. When a device asks for a domain, the proxy checks whether that domain is in the blocklist. If it is, HomeShield replies with an NXDOMAIN response so the device cannot load the blocked site or tracker. If not, it forwards the query to an upstream DNS provider such as Google, Cloudflare, or Quad9 and can cache the response for faster future lookups.
 
----
+This means HomeShield can block unwanted traffic before it even reaches your browser, app, or IoT device.
 
-## ⚡ How It Works
+## What HomeShield does
+
+HomeShield is designed to do all of the following:
+
+- Block ads, trackers, and suspicious domains at the DNS layer
+- Protect every device on the local network without installing per-device software
+- Forward allowed queries to upstream DNS servers
+- Cache responses in memory to reduce latency and repeated lookups
+- Identify devices by local IP address using friendly names
+- Log total queries, blocked queries, and device activity
+- Expose a simple dashboard for monitoring live traffic and blocked domains
+- Work as a home-network security layer for privacy and content filtering
+
+## How it works
 
 ```mermaid
 flowchart TD
-    Client["📱 Client Device<br/>(Phone / PC / Smart TV)"] -->|1. UDP DNS Query (Port 53)| Proxy["🛡️ HomeShield Proxy<br/>(src/proxy.js)"]
-    
-    Proxy --> CheckList{"Blocked in<br/>blocklist.txt?"}
-    
-    CheckList -- "Yes (Ad / Tracker)" --> NXDomain["🚫 Return NXDOMAIN<br/>(Connection Dropped)"]
-    NXDomain -->|Immediate Response| Client
-    
-    CheckList -- "No (Legitimate)" --> CheckCache{"Exists in<br/>RAM Cache?"}
-    
-    CheckCache -- "Cache Hit" --> ServeCache["⚡ Return Cached DNS Record"]
-    ServeCache --> Client
-    
-    CheckCache -- "Cache Miss" --> Upstream["🌐 Query Upstream DNS<br/>(e.g., 8.8.8.8:53)"]
-    Upstream --> StoreCache["💾 Save to Cache"]
-    StoreCache --> ReturnUpstream["✅ Forward Result to Client"]
-    ReturnUpstream --> Client
+    A[Client device] -->|DNS request| B[HomeShield proxy]
+    B --> C{Is domain in blocklist?}
+    C -->|Yes| D[Return NXDOMAIN]
+    C -->|No| E{Is it cached?}
+    E -->|Yes| F[Serve cached result]
+    E -->|No| G[Query upstream DNS]
+    G --> H[Return result to client]
+    H --> I[Save response to cache]
 ```
 
----
+The proxy listens on port 53, checks each request against the local blocklist, and only forwards valid requests upstream. This allows blocking to happen quickly and consistently across the whole network.
 
-## ✨ Features
+## Features
 
-- 🚫 **Network-Wide Ad & Tracker Blocking**: Sinkholes telemetry, adware, and known malicious domains across all devices on the network.
-- ⚡ **High-Speed In-Memory Caching**: Caches resolved records in memory to reduce upstream latency and accelerate browsing.
-- 🎯 **Subdomain & Wildcard Matching**: Automatically blocks child subdomains (e.g. blocking `ads.example.com` when `example.com` is in the blocklist).
-- 📱 **Device Identification**: Recognizes internal network IPs and maps them to friendly names (e.g. *My Laptop*, *My Phone*) via `devices.js`.
-- 📊 **Query Logging & Tracking**: Built-in tracking engine (`tracker.js`) to capture total queries, block counts, timestamps, and client details.
-- ⚙️ **Configurable Upstream Resolvers**: Seamlessly switch between Google (`8.8.8.8`), Cloudflare (`1.1.1.1`), Quad9 (`9.9.9.9`), or any custom upstream provider.
-- 🖥️ **Web Dashboard Ready**: Structured to power an Express-based monitoring UI (`public/index.html` & `src/api/server.js`).
+- Network-wide ad and tracker blocking
+- DNS-level sinkhole responses with NXDOMAIN
+- Subdomain-aware block matching
+- In-memory DNS caching
+- Friendly local device names for network traffic logs
+- Live query tracking and recent activity logs
+- Local dashboard for stats and blocked requests
+- Configurable upstream DNS settings
 
----
+## Dashboard preview
 
-## 📁 Project Structure
+<img src="public/dashboard-preview.png" alt="HomeShield dashboard preview" width="100%" />
+
+## Project structure
 
 ```text
 HomeShield/
-├── blocklist.txt          # Over 190,000+ blocked ad and tracker domains
-├── .env                   # Environment configuration (ports, upstream DNS)
-├── .env.example           # Example environment template
-├── package.json           # Dependencies, scripts, and package metadata
+├── .env.example             # Example environment configuration
+├── .env                     # Local runtime environment values
+├── LICENSE                  # Project license
+├── README.md                # Project documentation
+├── blocklist.txt            # Blocked domains, one per line
+├── package.json             # Node.js scripts and dependencies
 ├── public/
-│   └── index.html         # Frontend monitoring dashboard UI
-└── src/
-    ├── proxy.js           # Core DNS proxy & sinkhole engine (dns2)
-    ├── server.js          # Standalone DNS listener test server
-    ├── dns-client-test.js # Test script for testing local DNS resolution
-    ├── upstream-test.js   # Diagnostic script for verifying upstream DNS
-    ├── api/
-    │   └── server.js      # REST API server for metrics and log streaming
-    ├── config/
-    │   └── devices.js     # IP-to-device friendly name mappings
-    └── services/
-        └── tracker.js     # Query statistics and recent activity logger
+│   ├── homeshield_logo.png  # Project logo
+│   └── index.html          # Local dashboard UI
+├── src/
+│   ├── proxy.js            # Core DNS filtering proxy
+│   ├── server.js           # Example DNS listener/server script
+│   ├── dns-client-test.js  # Local DNS test client
+│   ├── upstream-test.js    # Upstream DNS validation script
+│   ├── api/
+│   │   └── server.js       # API for stats and dashboard data
+│   ├── config/
+│   │   └── devices.js      # Friendly device mapping by IP
+│   └── services/
+│       └── tracker.js      # Query logging and stats tracking
+└── node_modules/           # Installed dependencies
 ```
 
----
+## Requirements
 
-## 🚀 Quick Start
+- Node.js 18 or newer
+- Access to port 53 on the machine running HomeShield
+- Administrator or root access if using the default DNS port
+- A router or device configuration that points DNS requests to the HomeShield host
 
-### Prerequisites
+## How to run
 
-- [Node.js](https://nodejs.org/) (version **18.x** or higher recommended)
-- **Administrator / Root privileges** (Required to bind to UDP Port 53)
-
-### 1. Installation
-
-Clone this repository and install dependencies:
+### 1. Clone the project
 
 ```bash
-git clone https://github.com/your-username/HomeShield.git
+git clone <your-repository-url>
 cd HomeShield
+```
+
+### 2. Install dependencies
+
+```bash
 npm install
 ```
 
-### 2. Configure Environment
+### 3. Configure environment
 
-Copy `.env.example` to `.env` (or customize the existing `.env`):
+Copy the example file and adjust the values if needed:
 
 ```bash
 cp .env.example .env
 ```
 
-Default configuration (`.env`):
+Example configuration:
+
 ```env
 PORT=53
 UPSTREAM_DNS=8.8.8.8
 UPSTREAM_PORT=53
 ```
 
-### 3. Start the DNS Proxy
+### 4. Start the proxy
 
-> [!IMPORTANT]
-> Binding to standard DNS port **53** requires elevated privileges.
-> - **Windows**: Run PowerShell or Command Prompt as **Administrator**.
-> - **Linux / macOS**: Run with `sudo`.
+On Windows, run as Administrator:
 
 ```bash
-# Start HomeShield DNS Proxy
-node src/proxy.js  (For Windows)
-sudo node src/proxy.js (For MacOS)
+node src/proxy.js
 ```
 
-You should see:
+On macOS or Linux:
+
+```bash
+sudo node src/proxy.js
+```
+
+The server will start listening on port 53 and begin filtering incoming DNS requests.
+
+### 5. Open the dashboard
+
+HomeShield serves a local dashboard on:
+
 ```text
-🛡️ HomeShield DNS Proxy
-Listening on 0.0.0.0:53 (all interfaces)
-Upstream DNS: 8.8.8.8
+http://localhost:3000
 ```
 
----
+This page shows overall query counts, blocked counts, and recent request activity.
 
-## 🧪 Testing & Verification
+## Testing
 
-### Using `nslookup`
-
-Test resolution from your terminal by specifying HomeShield's address:
-
-**1. Test a blocked domain (should return `NXDOMAIN` or no address):**
-```bash
-nslookup 000491b06a.com 127.0.0.1
-```
-
-**2. Test an allowed domain (should resolve properly):**
-```bash
-nslookup google.com 127.0.0.1
-```
-
-### Using Built-in Test Scripts
-
-HomeShield includes testing scripts in `src/`:
+You can verify the system using the built-in scripts:
 
 ```bash
-# Verify upstream connectivity (Cloudflare 1.1.1.1):
 npm run test:upstream
-
-# Test local DNS proxy resolution:
 npm run test:client
 ```
 
----
+The upstream test checks connectivity to the configured upstream resolver. The client test sends a DNS query through the local resolver to confirm basic operation.
 
-## 📱 Client & Device Setup
+You can also test directly with `nslookup`:
 
-To route your traffic through HomeShield, update the DNS server settings on your devices or router to point to the host machine running HomeShield.
+```bash
+nslookup google.com 127.0.0.1
+nslookup ads.example.com 127.0.0.1
+```
 
-### Option A: Whole Network (Router Setup - Recommended)
-1. Log into your home router's admin panel (typically `192.168.1.1` or `192.168.0.1`).
-2. Navigate to **DHCP / LAN Settings** > **DNS Server**.
-3. Set the Primary DNS to the local IP of the machine running HomeShield (e.g. `192.168.8.198`).
-4. Save and reboot your router. Every device connected to your network is now shielded!
+A blocked domain should return an NXDOMAIN-style failure or no valid answer, while an allowed domain should resolve normally.
 
-### Option B: Individual Device Setup
+## Deployment and network setup guide
 
-<details>
-<summary><b>Windows 10 / 11</b></summary>
+> **⚠️⚠️⚠️ WARNING: DNS is the phonebook of the internet. If the machine running proxy.js goes offline, enters sleep mode, or the Node.js process stops, any device configured to use it as a DNS server will instantly lose internet access.**
+>
+> **To restore internet access if the server goes down, either restart proxy.js or change the devices' DNS settings back to Automatic (DHCP).**
 
-1. Open **Settings** > **Network & Internet** > **Wi-Fi** (or **Ethernet**).
-2. Click on **Hardware properties**.
-3. Under **DNS server assignment**, click **Edit**.
-4. Select **Manual**, toggle **IPv4** on.
-5. In **Preferred DNS**, enter your HomeShield host IP.
-</details>
+HomeShield can be deployed in several ways depending on your hardware and how you want to manage your network. Choose the method that best fits your environment.
 
-<details>
-<summary><b>macOS</b></summary>
+### Method 1: Local personal computer
 
-1. Open **System Settings** > **Network**.
-2. Select your active network connection and click **Details...**.
-3. Go to the **DNS** tab.
-4. Click `+` and enter your HomeShield host IP at the top of the list.
-</details>
+Best for solo developers, testing, or blocking ads on specific personal devices.
 
-<details>
-<summary><b>Android / iOS</b></summary>
+This method runs HomeShield in the background of your daily workstation using PM2.
 
-1. Open **Wi-Fi Settings** and tap the gear icon next to your network.
-2. Change IP settings from **DHCP** to **Static** (or Configure DNS > Manual).
-3. Set the DNS 1 server to your HomeShield machine's local IP address.
-</details>
+#### Step 1: Assign a static IP to your host machine
 
----
+1. Open your home router admin panel. This is usually something like 192.168.1.1 or 192.168.8.1.
+2. Navigate to DHCP, LAN, or Static IP / MAC Binding settings.
+3. Find your computer's Wi-Fi or Ethernet MAC address and assign it a permanent local IP such as 192.168.8.196.
+4. Save the configuration and restart your computer's Wi-Fi to apply the new IP.
 
-## 🔧 Customization & Configuration
+#### Step 2: Start HomeShield in the background
 
-### 1. Device Friendly Names (`src/config/devices.js`)
-Map your local network IPs to human-readable names to identify traffic sources in your logs:
+Make sure Node.js and PM2 are installed globally:
+
+```bash
+npm install -g pm2
+```
+
+Then start the project:
+
+```bash
+cd /path/to/HomeShield
+npm install
+pm2 start src/proxy.js --name HomeShield
+pm2 save
+```
+
+This keeps the DNS proxy running in the background and allows it to restart automatically when the machine boots.
+
+#### Step 3: Point your devices to HomeShield
+
+On the host machine:
+
+1. Open your network settings.
+2. Edit the IPv4 configuration.
+3. Set DNS to Manual.
+4. Enter 127.0.0.1 as the DNS server.
+5. Make sure DNS over HTTPS is disabled in your operating system settings.
+
+On other devices:
+
+1. Open the Wi-Fi settings for the device.
+2. Choose the network and edit the settings.
+3. Change IP/DNS settings from DHCP to Manual.
+4. Enter your host computer's static IP, such as 192.168.8.196, as the Primary DNS.
+
+This ensures that all DNS requests from the device pass through HomeShield before reaching the internet.
+
+### Method 2: Dedicated Raspberry Pi
+
+Best for whole-home ad-blocking. A Raspberry Pi acts as an always-on low-power server, which reduces the risk of losing internet access when a laptop or desktop goes to sleep.
+
+#### Step 1: Prepare the Raspberry Pi
+
+1. Flash Raspberry Pi OS Lite onto a microSD card using Raspberry Pi Imager.
+2. Connect the Pi to your router with Ethernet for the lowest latency.
+3. SSH into the Pi or open the terminal.
+4. Assign the Pi a static IP through your router admin panel.
+
+#### Step 2: Install Node.js and HomeShield
+
+```bash
+sudo apt update && sudo apt upgrade -y
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+git clone https://github.com/yourusername/HomeShield.git
+cd HomeShield
+npm install
+
+sudo npm install -g pm2
+sudo pm2 start src/proxy.js --name HomeShield
+sudo pm2 startup systemd
+sudo pm2 save
+```
+
+#### Step 3: Configure network-wide DNS
+
+Instead of configuring each device manually, force your router to use the Pi for DNS.
+
+1. Log in to your router admin panel.
+2. Find the DHCP server settings.
+3. Change the Primary DNS Server from your ISP default to your Raspberry Pi's static IP.
+4. Save the changes and reboot the router.
+
+Now every device that connects to your Wi-Fi will automatically use HomeShield for DNS filtering.
+
+### Method 3: Docker container
+
+Best for users running Unraid, Proxmox, Synology NAS, or another dedicated Linux home server.
+
+If you prefer containerized environments, you can run HomeShield in Docker instead of installing dependencies directly on the host machine.
+
+#### Step 1: Create a Dockerfile
+
+Add a Dockerfile to the root of the HomeShield project:
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY . .
+EXPOSE 53/udp
+EXPOSE 3000/tcp
+CMD ["node", "src/proxy.js"]
+```
+
+#### Step 2: Build and run the container
+
+```bash
+docker build -t homeshield .
+
+docker run -d \
+  --name homeshield-server \
+  --restart unless-stopped \
+  -p 53:53/udp \
+  -p 3000:3000/tcp \
+  homeshield
+```
+
+The `-p 53:53/udp` flag is important because DNS traffic uses UDP.
+
+#### Step 3: Route traffic
+
+Set your router's DHCP DNS settings to the IP address of the machine hosting the Docker container. Then open the dashboard in a browser at:
+
+```text
+http://localhost:3000
+```
+
+### Recommended setup
+
+For most home users, the best setup is:
+
+- a Raspberry Pi or always-on mini PC as the DNS host
+- a static local IP assignment for that device
+- router-level DNS configuration so all devices benefit automatically
+
+This gives you the strongest protection and avoids the downside of a laptop going to sleep or disconnecting from the network.
+
+## Configuration
+
+### Device names
+
+The file [src/config/devices.js](src/config/devices.js) maps IP addresses to friendly labels so logs are easier to read.
+
+Example:
 
 ```javascript
 module.exports = {
-    "192.168.8.198": "Work Laptop",
-    "192.168.8.199": "Personal iPhone",
-    "192.168.8.200": "Living Room Smart TV",
-    "127.0.0.1": "Localhost"
+  "192.168.8.198": "My Laptop",
+  "192.168.8.199": "My Phone",
+  "127.0.0.1": "Localhost"
 };
 ```
 
-### 2. Updating Blocklists (`blocklist.txt`)
-HomeShield uses a plain text file format containing one domain per line. You can append your own custom domains or replace the file with standard blocklists from reputable sources:
-- [The Firebog AdguardDNS Filter](https://firebog.net/)
-- [StevenBlack Unified Hosts](https://github.com/StevenBlack/hosts)
-- [AdGuard SDNS Filter](https://github.com/AdguardTeam/AdGuardSDNSFilter)
+### Blocklist management
 
----
+The file [blocklist.txt](blocklist.txt) contains one blocked domain per line. You can add your own domains or replace it with another curated source.
 
-## 🛠️ Troubleshooting
+Common blocklist sources include:
 
-<details>
-<summary><b>Error: EADDRINUSE: address already in use 0.0.0.0:53</b></summary>
+- Firebog
+- StevenBlack Unified Hosts
+- AdGuard DNS filter lists
 
-Another service is already listening on port 53.
-- **Windows**: Often caused by the `Internet Connection Sharing (ICS)` or `SharedAccess` service:
-  ```powershell
-  # Check which process is using port 53
-  Get-Process -Id (Get-NetUDPEndpoint -LocalPort 53).OwningProcess
-  
-  # If it is SharedAccess, stop it:
-  Stop-Service SharedAccess
-  ```
-- **Linux**: Often caused by `systemd-resolved`:
-  ```bash
-  sudo systemctl stop systemd-resolved
-  ```
-</details>
+## Troubleshooting
 
-<details>
-<summary><b>Error: EACCES: permission denied</b></summary>
+### Port 53 already in use
 
-Port 53 is a privileged port (< 1024). Make sure you run your terminal as **Administrator** (Windows) or use `sudo node src/proxy.js` (Linux/macOS).
-</details>
+Another service may already be listening on port 53. If that happens, stop the conflicting service or move HomeShield to another port in your environment.
 
-<details>
-<summary><b>DNS Changes not taking effect on client</b></summary>
+### Permission denied
 
-Your operating system or browser may be caching previous DNS queries. Flush your DNS cache:
-- **Windows**: `ipconfig /flushdns`
-- **macOS**: `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`
-- **Linux**: `sudo systemd-resolve --flush-caches`
-</details>
+Port 53 is a privileged port. Use administrator permissions or run the process with sudo.
 
----
+### DNS changes not taking effect
 
-## 🗺️ Roadmap
+Your OS or browser may still have cached DNS data. Flush the local DNS cache and retry.
 
-- [x] High-performance UDP DNS proxy with `dns2`
-- [x] Blocklist integration with 190,000+ domains
-- [x] Subdomain wildcard matching
-- [x] In-memory response caching
-- [x] Device IP identification (`devices.js`)
-- [ ] Connect `tracker.js` live query metrics to `src/api/server.js`
-- [ ] Interactive Web Dashboard (`public/index.html`) with query charts and block rate metrics
-- [ ] Automated remote blocklist updating & cron schedules
-- [ ] Whitelist overrides for false-positive exclusions
-- [ ] Support for DNS-over-HTTPS (DoH) and DNS-over-TLS (DoT) upstream resolution
+## License
 
----
-
-## 📜 License
-
-This project is licensed under the [ISC License](LICENSE).
+This project is licensed under the ISC License. See [LICENSE](LICENSE) for details.
 

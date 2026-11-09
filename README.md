@@ -93,7 +93,7 @@ HomeShield/
 - Node.js 18 or newer
 - Access to port 53 on the machine running HomeShield
 - Administrator or root access if using the default DNS port
-- A router or device configuration that points DNS requests to the HomeShield host
+- A router or device configuration that points DNS requests to the HomeShield host.
 
 ## How to run
 

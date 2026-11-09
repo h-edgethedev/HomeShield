@@ -100,7 +100,7 @@ HomeShield/
 ### 1. Clone the project
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/h-edgethedev/HomeShield.git
 cd HomeShield
 ```
 

@@ -249,7 +249,7 @@ sudo apt update && sudo apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
-git clone https://github.com/yourusername/HomeShield.git
+git clone https://github.com/h-edgethedev/HomeShield.git
 cd HomeShield
 npm install
 
